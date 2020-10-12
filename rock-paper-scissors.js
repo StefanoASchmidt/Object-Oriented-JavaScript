@@ -45,11 +45,53 @@ function createComputer() {
   let playerObject = createPlayer();
 
   let computerObject = {
-    choose() {
-      const choices = ['rock', 'paper', 'scissors'];
-      let randomIndex = Math.floor(Math.random() * choices.length);
-      this.move = choices[randomIndex];
+    probs: {r: 1/3, p: 1/3, s: 1/3},
+
+    randomComputerChoice() {
+      for (let i = 0; i < 3; i++) {
+        if (this.probs[['r', 'p', 's'][i]] === 1) return i;
+      }
+    
+      let alpha = 0.5 - this.probs['r'];
+      let beta = 0.5 - (this.probs['p'] / (1 - this.probs['r']));
+    
+      return Math.round(Math.random() + alpha)*Math.round(Math.random() + beta + 1);
     },
+
+    choose() {
+      const CHOICES = ['rock', 'paper', 'scissors'];
+      this.move = CHOICES[this.randomComputerChoice()];
+    },
+
+    updateProbabilities(history) {
+      const WIN_PAIRS = {r: 's', p: 'r', s: 'p'};
+      let latest = history[history.length - 1][1];
+
+      let plays = history.filter(play => play[1] === latest);
+      let winPlays = plays.filter(play => play[0] === WIN_PAIRS[latest]);
+      let winProb = plays.length === 0 ? 0 : winPlays.length / plays.length;
+
+      
+      if (winProb > this.probs[latest]) {
+        let lossProb = (1 - this.probs[latest]);
+        let increment = lossProb*0.2;
+        this.probs[latest] += increment;
+        for (let i = 0; i < 3; i++) {
+          let current = ['r', 'p', 's'][i];
+          if (current !== latest) this.probs[current] = this.probs[current]*0.8;
+        }
+      } else {
+        let lossProb = (1 - this.probs[latest]);
+        let decrement = (this.probs[latest]*0.2)/lossProb;
+        this.probs[latest] = this.probs[latest]*0.8;
+        let incrementFactor = 1 + decrement;
+        for (let i = 0; i < 3; i++) {
+          let current = ['r', 'p', 's'][i];
+          if (current !== latest) this.probs[current] = this.probs[current]*incrementFactor;
+        }
+      }
+    },
+
   };
 
   return Object.assign(playerObject, computerObject);
@@ -84,10 +126,29 @@ function scoreTable(winScore) {
   };
 };
 
+function gameHistory() {
+  return {
+    history: [],
+
+    update(humanMove, computerMove) {
+      this.history.push([humanMove[0], computerMove[0]]);
+    },
+
+    display() {
+      console.log(`HISTORY: ${this.history.map(arr => `${arr[0]}${arr[1]}`).join(', ')}`);
+    },
+
+    reset() {
+      this.history = [];
+    },
+  };
+};
+
 const RPSGame = {
   human: createHuman(),
   computer: createComputer(),
   score: scoreTable(5),
+  history: gameHistory(),
 
   clearScreen() {
     console.clear();
@@ -148,21 +209,28 @@ const RPSGame = {
     console.log("Thanks for playing Rock, Paper, Scissors. Goodbye!");
   },
 
+  playGame() {
+    while (!this.score.isEndScore()) {
+      this.clearScreen();
+      this.displayScore();
+      this.history.display();
+      this.human.choose();
+      this.computer.choose();
+      this.history.update(this.human.move, this.computer.move);
+      this.computer.updateProbabilities(this.history.history);
+      this.displayWinner();
+      this.pause();
+    }
+    this.clearScreen();
+    this.displayGameWinner();
+  },
+
   play() {
     this.clearScreen()
     this.displayWelcomeMessage();
     this.pause();
     while(true) {
-      while (!this.score.isEndScore()) {
-        this.clearScreen();
-        this.displayScore();
-        this.human.choose();
-        this.computer.choose();
-        this.displayWinner();
-        this.pause();
-      }
-      this.clearScreen();
-      this.displayGameWinner();
+      this.playGame();
       if (!this.playAgain()) break;
       this.score.reset();
     }
