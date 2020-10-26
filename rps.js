@@ -1,7 +1,9 @@
+/* eslint-disable max-lines-per-function */
+
 const READLINE = require('readline-sync');
-const WORD_KEY = { r: 'rock', p: 'paper', s: 'scissors', h: 'you', c: 'computer', t: 'tie' };
-const WINNING_COMBOS = { r: 's', p: 'r', s: 'p'};
-const MOVE_CHOICES = ['r', 'p', 's'];
+const WINNING_COMBOS = { rock: 'scissors', paper: 'rock', scissors: 'paper'};
+const INDEXES = {human: 0, computer: 1, outcome: 2};
+const MOVE_CHOICES = ['rock', 'paper', 'scissors']; // ['r', 'p', 's']
 const ROUNDS_PER_GAME = 5;
 
 function stats() {
@@ -29,38 +31,49 @@ function stats() {
       this.historic.push(this.game);
     },
 
-    winner(gameArr = this.game) {
+    gameWinner(gameArr = this.game) {
       let wins = this.getWins(gameArr);
       if (wins[0] >= ROUNDS_PER_GAME) {
-        return 'h';
+        return 'human';
       } else if (wins[1] >= ROUNDS_PER_GAME) {
-        return 'c';
+        return 'computer';
       } else {
         return undefined;
       }
     },
 
     getGameWinNums() {
-      let humanWins = this.historic.filter(arr => this.winner(arr) === 'h').length;
-      let computerWins = this.historic.filter(arr => this.winner(arr) === 'c').length;
+      let humanWins = this.historic.filter(arr => {
+        return this.gameWinner(arr) === 'human';
+      }).length;
+
+      let computerWins = this.historic.filter(arr => {
+        return this.gameWinner(arr) === 'computer';
+      }).length;
 
       return [humanWins, computerWins];
     },
 
     getWins(gameArr = this.game) {
-      let humanWins = gameArr.filter(arr => arr[2] === 'h').length;
-      let computerWins = gameArr.filter(arr => arr[2] === 'c').length;
+      let humanWins = gameArr.filter(arr => {
+        return arr[INDEXES.outcome] === 'human';
+      }).length;
+
+      let computerWins = gameArr.filter(arr => {
+        return arr[INDEXES.outcome] === 'computer';
+      }).length;
+
       return [humanWins, computerWins];
     },
 
-    getTypeOfRounds(player, outcome = false) {
-      if (outcome) {
+    getTypeOfRounds(player, result = false) {
+      if (result) {
         return this.historic.flat()
-                            .filter(arr => arr[2] === outcome)
-                            .map(arr => arr[player]);
+          .filter(arr => arr[INDEXES.outcome] === result)
+          .map(arr => arr[player]);
       } else {
         return this.historic.flat()
-                            .map(arr => arr[player]);
+          .map(arr => arr[player]);
       }
     },
 
@@ -68,36 +81,40 @@ function stats() {
       let percentages = [0,0,0];
 
       moves.forEach(move => {
-        if (move === 'r') {
+        if (move === 'rock') {
           percentages[0] += 1;
-        } else if (move === 'p') {
+        } else if (move === 'paper') {
           percentages[1] += 1;
         } else {
           percentages[2] += 1;
         }
       });
 
-      percentages = percentages.map(num => ((num / moves.length) * 100).toFixed(2));
+      percentages = percentages.map(num => {
+        return ((num / moves.length) * 100).toFixed(2);
+      });
+
       return percentages;
     },
 
     playerStats(player) {
+      let playerNum;
       if (player === 'You') {
-        playerNum = 0;
+        playerNum = INDEXES['human'];
       } else if (player === 'Computer') {
-        playerNum = 1;
+        playerNum = INDEXES['computer'];
       }
-    
+
       let percent = this.getMoveDistribution(this.historic
         .flat()
         .map(arr => arr[playerNum]));
 
       percent.forEach((per, idx) => {
-        console.log(`${player} played ${WORD_KEY[MOVE_CHOICES[idx]]} ${per}%.`);
+        console.log(`${player} played ${MOVE_CHOICES[idx]} ${per}%.`);
       });
 
       console.log('\n');
-    }, 
+    },
 
     giveGameDetails() {
       let [human, computer] = this.getGameWinNums();
@@ -110,11 +127,11 @@ function stats() {
     },
 
     giveRoundStats() {
-      console.log(``)
+      console.log(``);
     }
 
   };
-};
+}
 
 function createPlayer() {
   return {
@@ -128,42 +145,51 @@ function createPlayer() {
       this.move = null;
     }
   };
-};
+}
 
 function createHuman() {
   let player = createPlayer();
   let human = {
     choose() {
-      let choice;
-
-      while (true) {
-        console.log(`Please choose one of rock, paper, scissors! (r/p/s) `);
-        choice = READLINE.question().toLowerCase()[0];
-        if (MOVE_CHOICES.includes(choice)) break;
-        console.log("Sorry, invalid choice.");
+      console.log("Please choose one of rock, paper, scissors! (r/p/s)");
+      let choice = this.validateChoice(READLINE.question().toLowerCase());
+      while (!MOVE_CHOICES.includes(choice)) {
+        console.log("That is not a valid choice.");
+        console.log("Please choose one of rock, paper, scissors! (r/p/s)");
+        choice = this.validateChoice(READLINE.question().toLowerCase());
       }
 
       this.move = choice;
     },
+
+    validateChoice(choice) {
+      for (let idx = 0; idx < MOVE_CHOICES.length; idx += 1) {
+        if (MOVE_CHOICES[idx].startsWith(choice)) {
+          return MOVE_CHOICES[idx];
+        }
+      }
+
+      return choice;
+    },
   };
 
   return Object.assign(player, human);
-};
+}
 
 function createComputer() {
   let player = createPlayer();
   let computer = {
-    probs: {r: 1/3, p: 1/3, s: 1/3},
+    probs: {rock: 1 / 3, paper: 1 / 3, scissors: 1 / 3},
     stategy: 0,
 
     randomComputerChoice() {
       let cummulative = [];
       let current = 0;
-      for (let i = 0; i < 3; i++) {
-        current += this.probs[MOVE_CHOICES[i]];
+      for (let idx = 0; idx < 3; idx++) {
+        current += this.probs[MOVE_CHOICES[idx]];
         cummulative.push(current);
       }
-    
+
       let random = Math.random();
 
       if (random < cummulative[0]) {
@@ -176,11 +202,12 @@ function createComputer() {
     },
 
     choose(game) {
-      if (!this.move || this.strategy || game[game.length - 1][0] === this.move) {
+      if (!this.move || this.strategy ||
+        game[game.length - 1][0] === this.move) {
         this.move = MOVE_CHOICES[this.randomComputerChoice()];
       } else {
-        this.move = WINNING_COMBOS[this.move]; 
-      } 
+        this.move = WINNING_COMBOS[this.move];
+      }
     },
 
     chooseStrategy() {
@@ -189,38 +216,38 @@ function createComputer() {
 
     updateProbabilities(history) {
       const DECREMENT = 0.8;
-      let latest = history[history.length - 1][1];
-
-      let plays = history.filter(play => play[1] === latest);
-      let winPlays = plays.filter(play => play[0] === WINNING_COMBOS[latest]);
+      let latest = history[history.length - 1][INDEXES.computer];
+      let plays = history.filter(play => play[INDEXES.computer] === latest);
+      let winPlays = plays.filter(play => {
+        return play[INDEXES.human] === WINNING_COMBOS[latest];
+      });
       let winProb = plays.length === 0 ? 0 : winPlays.length / plays.length;
 
-      
       if (winProb > this.probs[latest]) {
         let lossProb = (1 - this.probs[latest]);
-        let increment = lossProb*(1 - DECREMENT);
+        let increment = lossProb * (1 - DECREMENT);
         this.probs[latest] += increment;
         this.updateLatestByFactor(latest, DECREMENT);
       } else {
         let lossProb = (1 - this.probs[latest]);
-        let decrement = (this.probs[latest]*(1 - DECREMENT))/lossProb;
-        this.probs[latest] = this.probs[latest]*DECREMENT;
+        let decrement = (this.probs[latest] * (1 - DECREMENT)) / lossProb;
+        this.probs[latest] *= DECREMENT;
         let incrementFactor = 1 + decrement;
         this.updateLatestByFactor(latest, incrementFactor);
       }
     },
 
     updateLatestByFactor(latest, factor) {
-      for (let i = 0; i < MOVE_CHOICES.length; i++) {
-        let current = MOVE_CHOICES[i];
-        if (current !== latest) this.probs[current] = this.probs[current]*factor;
+      for (let idx = 0; idx < MOVE_CHOICES.length; idx++) {
+        let current = MOVE_CHOICES[idx];
+        if (current !== latest) this.probs[current] *= factor;
       }
     },
 
   };
 
   return Object.assign(player, computer);
-};
+}
 
 const RPSGAME = {
   human: createHuman(),
@@ -238,74 +265,71 @@ const RPSGAME = {
   },
 
   displayWelcomeMessage() {
-    console.log("Welcome to Rock, Paper, Scissors!");
-    console.log('\n');
+    console.log("Welcome to Rock, Paper, Scissors!\n");
     console.log('The rules of this game are:');
     console.log('- rock beats scissors');
     console.log('- scissors beats paper');
-    console.log('- paper beats rock');
-    console.log('\n');
+    console.log('- paper beats rock\n');
     console.log('You will be playing against a smart computer!');
-    console.log('Each game is first to 5. You can play as many games as you like!');
-    console.log('Have fun!');
-    console.log('\n');
+    console.log('Each game is first to 5. ' +
+    'You can play as many games as you like!');
+    console.log('Have fun!\n');
   },
 
   displayGoodbyeMessage() {
-    console.log("Thank you for playing Rock, Paper, Scissors! Goodbye!");
+    console.log("Thank you for playing Rock, Paper, Scissors! Goodbye!\n");
   },
 
   displayScore() {
-    console.log("GAME SCORE")
-    console.log(`you: ${this.stats.getWins()[0]}`);
-    console.log(`computer: ${this.stats.getWins()[1]}`);
-    console.log('\n');
+    console.log("GAME SCORE");
+    console.log(`you: ${this.stats.getWins()[INDEXES.human]}`);
+    console.log(`computer: ${this.stats.getWins()[INDEXES.computer]}\n`);
   },
 
   displayGame() {
     console.log("GAME HISTORY");
     this.stats
-        .getCurrentGame()
-        .map(arr => {
-          let [you, computer, result] = arr.map(elem => WORD_KEY[elem]);
-          return [`you: ${you}`.padEnd(14,' '), 
-          `computer: ${computer}`.padEnd(19,' '), `result: ${result}`];
-        })
-        .map(arr => arr.join('| '))
-        .forEach(str => console.log(str));
+      .getCurrentGame()
+      .map(arr => {
+        return [`you: ${arr[INDEXES.human]}`.padEnd(14,' '),
+          `computer: ${arr[INDEXES.computer]}`.padEnd(19,' '),
+          `result: ${arr[INDEXES.outcome] ===
+            'human' ? 'you' : arr[INDEXES.outcome]}`];
+      })
+      .map(arr => arr.join('| '))
+      .forEach(str => console.log(str));
     console.log('\n');
   },
 
-  computeWinner(humanMove, computerMove) {
+  computeRoundWinner(humanMove, computerMove) {
     if (computerMove === humanMove) {
-      return 't';
+      return 'tie';
     } else if (computerMove === WINNING_COMBOS[humanMove]) {
-      return 'h';
+      return 'human';
     } else {
-      return 'c';
+      return 'computer';
     }
   },
 
   displayRoundWinner(roundArr) {
     console.log('\n');
-    console.log(`You chose: ${WORD_KEY[roundArr[0]]}`);
-    console.log(`Computer chose: ${WORD_KEY[roundArr[1]]}`);
-    let winner = roundArr[2];
-    if (winner === 't') {
-      console.log("This round is a tie!");
-    } else if (winner === 'h') {
-      console.log("You win the round!");
-    } else if (winner === 'c') {
-      console.log("Computer wins the round!");
+    console.log(`You chose: ${roundArr[INDEXES.human]}`);
+    console.log(`Computer chose: ${roundArr[INDEXES.computer]}`);
+    let result = roundArr[INDEXES.outcome];
+    if (result === 'tie') {
+      console.log("This round is a tie!\n");
+    } else if (result === 'human') {
+      console.log("You win the round!\n");
+    } else if (result === 'computer') {
+      console.log("Computer wins the round!\n");
     }
-    console.log('\n');
   },
 
   displayGameWinner(roundArr) {
-    let winner = roundArr[2];
-    if (winner === 'h') {
+    let winner = roundArr[INDEXES.outcome];
+    if (winner === 'human') {
       console.log("You win this game!");
-    } else if (winner === 'c') {
+    } else if (winner === 'computer') {
       console.log("Computer wins this game!");
     }
   },
@@ -318,12 +342,12 @@ const RPSGAME = {
 
   playAgain() {
     console.log('Do you want to play again? (y/n)');
-    let answer = READLINE.question().toLowerCase()[0];
+    let answer = READLINE.question().toLowerCase();
 
     while (!['y', 'n'].includes(answer)) {
       console.log('That is not a valid answer.');
       console.log('Do you want to play again? (y/n)');
-      answer = READLINE.question().toLowerCase()[0];
+      answer = READLINE.question().toLowerCase();
     }
 
     return answer === 'y';
@@ -333,14 +357,14 @@ const RPSGAME = {
     this.human.choose();
     this.computer.choose(this.stats.getCurrentGame());
 
-    this.stats.updateGame(this.human.showMove(), this.computer.showMove(), 
-    this.computeWinner(this.human.showMove(), this.computer.showMove()));
+    this.stats.updateGame(this.human.showMove(), this.computer.showMove(),
+      this.computeRoundWinner(this.human.showMove(), this.computer.showMove()));
 
     this.displayRoundWinner(this.stats.getLastRound());
   },
 
   playGame() {
-    while(!this.stats.winner()) {
+    while (!this.stats.gameWinner()) {
       this.displayScore();
       this.displayGame();
       this.playRound();
