@@ -163,6 +163,8 @@ function createHuman() {
     },
 
     validateChoice(choice) {
+      if (choice.length <= 0) return choice;
+
       for (let idx = 0; idx < MOVE_CHOICES.length; idx += 1) {
         if (MOVE_CHOICES[idx].startsWith(choice)) {
           return MOVE_CHOICES[idx];
