@@ -23,7 +23,7 @@ class Square {
 
   toString() {
     return this.marker;
-  } 
+  }
 }
 
 class Board {
@@ -96,7 +96,7 @@ class Board {
       this.squares[String(counter)].setMarker(Square.UNUSED_SQUARE);
     }
   }
-  
+
   unusedSquares() {
     let keys = Object.keys(this.squares);
     return keys.filter(key => this.squares[key].isUnused());
@@ -140,16 +140,16 @@ class Computer extends Player {
 
 class TTTGame {
   static POSSIBLE_WINNING_ROWS = [
-    ["1", "2", "3"], 
-    ["4", "5", "6"], 
-    ["7", "8", "9"], 
-    ["1", "4", "7"], 
-    ["2", "5", "8"], 
-    ["3", "6", "9"], 
-    ["1", "5", "9"], 
-    ["3", "5", "7"] 
+    ["1", "2", "3"],
+    ["4", "5", "6"],
+    ["7", "8", "9"],
+    ["1", "4", "7"],
+    ["2", "5", "8"],
+    ["3", "6", "9"],
+    ["1", "5", "9"],
+    ["3", "5", "7"]
   ];
-  
+
   static WINNING_SCORE = 3;
 
   static joinOr = function(arr, sep = ', ', last = 'or') {
@@ -391,7 +391,7 @@ class TTTGame {
     return (this.human.getWins() === TTTGame.WINNING_SCORE ||
            this.computer.getWins() === TTTGame.WINNING_SCORE);
   }
-  
+
   threatSquares(validChoices, player) {
     return validChoices.filter(choice => this.isThreatSquare(choice, player));
   }
